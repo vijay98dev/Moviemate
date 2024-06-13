@@ -8,8 +8,9 @@ from rest_framework import generics
 # from rest_framework import mixins
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
-
-
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated , IsAuthenticatedOrReadOnly
+from movielist.api.permissions import AdminOrReadOnly,ReviewUserOrReadOnly
 
 
 class WatchListAV(APIView):
@@ -105,12 +106,22 @@ class StreamViewSets(viewsets.ViewSet):
         serializer = StreamPlateformSerializer(movie)
         return Response(serializer.data)
 
-
-
+    def create(self, request):
+        serializer = StreamPlateformSerializer(data= request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer._errors)
+        
+    def destroy(self, request, pk=None):
+        plateform=StreamPlateform.objects.get(pk=pk)
+        plateform.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ReviewList(generics.ListAPIView):
     serializer_class = ReviewSerializer
-    
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
         pk = self.kwargs['pk']
         return Review.objects.filter(watchlist=pk)
@@ -118,16 +129,31 @@ class ReviewList(generics.ListAPIView):
 class ReviewCreate(generics.CreateAPIView):
     serializer_class =ReviewSerializer
     
+    def get_queryset(self):
+        return Review.objects.all()
+    
     def perform_create(self, serializer):
         pk=self.kwargs.get('pk')
         watchlist = WatchList.objects.get(pk=pk)
-        serializer.save(watchlist=watchlist)
+        review_user = self.request.user
+        review_queryset = Review.objects.filter(watchlist=watchlist,review_user=review_user)
+        print(review_queryset)
+        if review_queryset.exists():
+            raise ValidationError('You have already reviewed this watchlist')
+        if watchlist.number_ratings ==0:
+            watchlist.avg_rating = serializer.validated_data['ratings']
+        else:
+            watchlist.avg_rating =(watchlist.avg_rating + serializer.validated_data['ratings'])/2
+            
+        watchlist.number_ratings = watchlist.number_ratings+1
+        watchlist.save()
+        serializer.save(watchlist=watchlist,review_user=review_user)
     
     
 class ReviewDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    
+    permission_classes = [ReviewUserOrReadOnly]
     
 # class ReviewDetail(mixins.RetrieveModelMixin,generics.GenericAPIView):
 #     queryset = Review.objects.all()
