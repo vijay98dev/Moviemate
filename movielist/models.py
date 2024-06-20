@@ -36,7 +36,7 @@ class Review(models.Model):
     
     
     def __str__(self):
-        return str(self.ratings) + ' | ' + self.watchlist.title
+        return str(self.ratings) + ' | ' + self.watchlist.title + ' | ' + str(self.review_user)
     
     
     
