@@ -13,8 +13,8 @@ from rest_framework.permissions import IsAuthenticated , IsAuthenticatedOrReadOn
 from movielist.api.permissions import IsAdminOrReadOnly,IsReviewUserOrReadOnly
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle , ScopedRateThrottle
 from movielist.api.throttling import ReviewCreateThrottle,ReviewListThrottle
-
-
+from django_filters.rest_framework import DjangoFilterBackend
+from movielist.api.pagination import WatchListPagination,WathchListCPagination
 
 class WatchListAV(APIView):
     permission_classes=[IsAdminOrReadOnly]
@@ -30,7 +30,20 @@ class WatchListAV(APIView):
         else:
             return Response(serializer.errors)
         
-        
+class WatchListGV(generics.ListAPIView):
+    queryset=WatchList.objects.all()
+    serializer_class=WatchListSerializer
+    pagination_class=WathchListCPagination
+    # filter_backends =[DjangoFilterBackend]
+    # filterset_fields=['title','plateform__name']
+    
+    # filter_backends=[filter.SerchFilter]
+    # search_fields=['title','plateform__name']
+    
+    # filter_backends=[filter.OrderingFilter]
+    # ordering_fields=['avg_rating']
+    
+    
 class WatchListDetails(APIView):
     permission_classes=[IsAdminOrReadOnly]
     def get (self,request,pk):
@@ -131,6 +144,8 @@ class ReviewList(generics.ListAPIView):
     throttle_classes =[ReviewListThrottle,AnonRateThrottle]
     # throttle_classes =[ScopedRateThrottle]
     # throttle_scope = 'review-details'
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields=['review_user__username','active']
     def get_queryset(self):
         pk = self.kwargs['pk']
         return Review.objects.filter(watchlist=pk)
@@ -218,3 +233,11 @@ class ReviewDetail(generics.RetrieveUpdateDestroyAPIView):
 #         movie= Movie.objects.get(id=pk)
 #         movie.delete()
 #         return Response(status=204)
+
+
+class UserReview(generics.ListAPIView):
+    serializer_class=ReviewSerializer
+    
+    def get_queryset(self):
+        username = self.request.query_params.get('username',None)
+        return Review.objects.filter(review_user__username=username)

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'movielist',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -147,5 +148,8 @@ REST_FRAMEWORK = {
         'review-create':'1/day',
         'review-list':'10/day',
         # 'review-details':'2/day',
-    }
+    },
+    'DEFAULT_RENDERER_CLASSES':('rest_framework.renderers.JSONRenderer',),
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    # 'PAGE_SIZE': 5
 }
